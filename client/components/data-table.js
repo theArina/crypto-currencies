@@ -15,20 +15,27 @@ import Stack from '@mui/material/Stack';
 import TableSortLabel from '@mui/material/TableSortLabel';
 import { visuallyHidden } from '@mui/utils';
 import Box from '@mui/material/Box';
+import { useSelector, useDispatch } from 'react-redux';
+import { set } from '../store/reducer';
 
 const updateTickersInterval = 10 * 1000;
 
 // TODO: split into components
 export default function DataTable() {
-  const [rows, setRows] = useState([]);
-  const [filteredRows, setFilteredRows] = useState([]);
-  const [tickers, setTickers] = useState({});
-  const [filteredTickers, setFilteredTickers] = useState([]);
-  const [currency, setCurrency] = useState('USD');
-  const [filter, setFilter] = useState('');
-  const [amount, setAmount] = useState(1);
-  const [orderBy, setOrderBy] = useState('name');
-  const [order, setOrder] = useState('asc');
+  const state = useSelector((state) => state);
+  const dispatch = useDispatch();
+
+  const {
+    rows,
+    filteredRows,
+    tickers,
+    filteredTickers,
+    currency,
+    filter,
+    amount,
+    orderBy,
+    order,
+  } = state;
 
   const columns = [
     {
@@ -48,7 +55,7 @@ export default function DataTable() {
     const pairs = Object.keys(assets);
     if (pairs.length === 0) return;
     const res = await api.getTickers(pairs);
-    setTickers(res);
+    dispatch(set(['tickers', res]));
   };
 
   const getTickersNamesFilteredByCurrency = () => {
@@ -66,8 +73,8 @@ export default function DataTable() {
     }, []);
   };
 
-  const getRowsWithDroppedValues = (filtered = filteredTickers) => {
-    return filtered
+  const getRowsWithDroppedValues = (filteredT = filteredTickers || []) => {
+    return filteredT
       .reduce((filtered, { name, label }) => {
         const ticker = tickers[name];
         if (ticker) {
@@ -89,19 +96,19 @@ export default function DataTable() {
 
   useEffect(() => {
     const newRows = getRowsWithDroppedValues(filteredTickers);
-    setRows(newRows);
+    dispatch(set(['rows', newRows]));
   }, [amount]);
 
   useEffect(() => {
     const newRows = getRowsWithDroppedValues(filteredTickers);
-    setRows(newRows);
+    dispatch(set(['rows', newRows]));
   }, [amount]);
 
   useEffect(() => {
     const filtered = getTickersNamesFilteredByCurrency();
-    setFilteredTickers(filtered);
+    dispatch(set(['filteredTickers', filtered]));
     const newRows = getRowsWithDroppedValues(filtered);
-    setRows(newRows);
+    dispatch(set(['rows', newRows]));
   }, [currency, tickers]);
 
   useEffect(() => {
@@ -110,20 +117,20 @@ export default function DataTable() {
 
   const toFilter = (value) => {
     if (!value) {
-      setFilteredRows(rows);
+      dispatch(set(['filteredRows', rows]));
       return;
     }
-    setFilter(value.toUpperCase());
+    dispatch(set(['filter', value.toUpperCase()]));
     const filteredRows = rows.filter(({ name }) => {
       return name.toLowerCase().includes(value.toLowerCase());
     });
-    setFilteredRows(filteredRows);
+    dispatch(set(['filteredRows', filteredRows]));
   };
 
   const createSortHandler = (property) => () => {
     const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
-    setOrderBy(property);
+    dispatch(set(['order', isAsc ? 'desc' : 'asc']));
+    dispatch(set(['orderBy', property]));
   };
 
   const descendingComparator = (a, b, orderBy) => {
@@ -150,13 +157,13 @@ export default function DataTable() {
             variant="outlined"
             label="Your currency"
             value={currency}
-            onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+            onChange={(e) => dispatch(set(['currency', e.target.value.toUpperCase()]))}
           />
           <TextField
             variant="outlined"
             label="Asset amount"
             value={amount}
-            onChange={({ target: { value } }) => setAmount(value)}
+            onChange={({ target: { value } }) => dispatch(set(['amount', value]))}
           />
           <TextField
             variant="outlined"
@@ -178,9 +185,9 @@ export default function DataTable() {
             <TableHead>
               <TableRow>
                 {
-                  columns.map(({ label, value }) => {
+                  columns.map(({ label, value }, i) => {
                     return (
-                      <TableCell key={value}>
+                      <TableCell key={value + i}>
                         <TableSortLabel
                           active={orderBy === value}
                           direction={orderBy === value ? order : 'asc'}
